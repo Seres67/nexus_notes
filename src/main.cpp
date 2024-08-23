@@ -1,8 +1,7 @@
-#include <globals.hpp>
+#include "globals.hpp"
+#include <fstream>
 #include <gui.hpp>
-#include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
-#include <imgui/misc/cpp/imgui_stdlib.h>
 #include <nexus/Nexus.h>
 #include <settings.hpp>
 #include <vector>
@@ -12,6 +11,7 @@ void addon_load(AddonAPI *api_p);
 void addon_unload();
 void addon_render();
 void addon_options();
+void texture_callback(const char *identifier, Texture *texture);
 
 BOOL APIENTRY dll_main(const HMODULE hModule, const DWORD ul_reason_for_call, LPVOID lpReserved)
 {
@@ -37,7 +37,7 @@ extern "C" __declspec(dllexport) AddonDefinition *GetAddonDef()
     addon_def.Version.Major = 0;
     addon_def.Version.Minor = 1;
     addon_def.Version.Build = 0;
-    addon_def.Version.Revision = 1;
+    addon_def.Version.Revision = 2;
     addon_def.Author = "Seres67";
     addon_def.Description = "A Nexus addon to take notes in game.";
     addon_def.Load = addon_load;
@@ -61,8 +61,10 @@ void addon_load(AddonAPI *api_p)
 
     Settings::settings_path = api->Paths.GetAddonDirectory("notes\\settings.json");
     Settings::notes_path = api->Paths.GetAddonDirectory("notes\\notes");
+    Settings::images_path = api->Paths.GetAddonDirectory("notes\\images");
     if (std::filesystem::exists(Settings::settings_path)) {
         Settings::load(Settings::settings_path);
+
         if (std::filesystem::exists(Settings::notes_path)) {
             for (const std::filesystem::directory_iterator dir(Settings::notes_path); const auto &entry : dir) {
                 if (entry.is_regular_file()) {
@@ -81,6 +83,18 @@ void addon_load(AddonAPI *api_p)
             }
         } else {
             std::filesystem::create_directories(Settings::notes_path);
+        }
+        if (std::filesystem::exists(Settings::images_path)) {
+            for (const std::filesystem::directory_iterator dir(Settings::images_path); const auto &entry : dir) {
+                if (entry.is_regular_file()) {
+                    const auto pos = entry.path().filename().string().find('.');
+                    const auto identifier =
+                        std::string("NOTES_IMAGE_").append(entry.path().filename().string().substr(0, pos));
+                    api->Textures.LoadFromFile(identifier.c_str(), entry.path().string().c_str(), texture_callback);
+                }
+            }
+        } else {
+            std::filesystem::create_directories(Settings::images_path);
         }
     } else {
         Settings::json_settings[Settings::IS_ADDON_ENABLED] = Settings::is_addon_enabled;
@@ -108,61 +122,14 @@ void addon_unload()
 }
 
 bool tmp_open = true;
-static int open_file = 0;
 void addon_render()
 {
     ImGui::SetNextWindowBgAlpha(Settings::window_alpha);
-    auto flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDecoration;
+    auto flags = ImGuiWindowFlags_NoCollapse;
     if (tmp_open && ImGui::Begin("Notes###NotesMainWindow", &tmp_open, flags)) {
-        if (ImGui::BeginChild("Filesystem##NotesFS", {150, -FLT_MIN}, true)) {
-            if (ImGui::SmallButton("Create##NotesCreate")) {
-                create_new_file = true;
-            }
-            ImGui::SameLine(0, 1 * ImGui::GetStyle().ItemSpacing.x);
-            ImGui::SmallButton("Delete##NotesDelete");
-            if (create_new_file) {
-                ImGui::InputText("Filename##NotesNewFileInput", new_file_name, 256);
-                if (ImGui::SmallButton("Confirm##NotesConfirmCreate") || ImGui::IsKeyPressed(ImGuiKey_Enter, false)) {
-                    std::string file_path = Settings::notes_path.string() + "\\" + (std::string(new_file_name));
-                    std::ifstream input_file(file_path);
-                    std::string buffer;
-                    if (input_file.is_open()) {
-                        input_file.seekg(0, std::ios::end);
-                        buffer.resize(input_file.tellg());
-                        input_file.seekg(0, std::ios::beg);
-                        input_file.read(&buffer[0], buffer.size());
-                        api->Log(ELogLevel_DEBUG, addon_name, "File opened & read!");
-                    }
-                    input_file.close();
-                    files.emplace_back(new_file_name, file_path, buffer);
-                    memset(new_file_name, 0, 256);
-                    create_new_file = false;
-                }
-            }
-            for (int i = 0; i < files.size(); i++) {
-                if (ImGui::Selectable(files[i].name.c_str(), files[open_file].name == files[i].name)) {
-                    open_file = i;
-                }
-            }
-            ImGui::EndChild();
-        }
+        render_file_browser();
         ImGui::SameLine(0, 0 * ImGui::GetStyle().ItemSpacing.x);
-        if (!files.empty() && ImGui::BeginChild("Editor##NotesEditor", {0, 0}, true)) {
-            ImGui::Text("%s", files[open_file].name.c_str());
-            ImGui::SameLine(0, 1 * ImGui::GetStyle().ItemSpacing.x);
-            if (ImGui::SmallButton("Save") ||
-                (ImGui::GetIO().KeyMods == ImGuiKeyModFlags_Ctrl && ImGui::IsKeyPressed('S', false))) {
-                api->Log(ELogLevel_INFO, addon_name, "Saving!");
-                std::ofstream output_file(files[open_file].path);
-                output_file << files[open_file].buffer;
-                output_file.close();
-            }
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-            ImGui::InputTextMultiline("##NotesEditorText", &files[open_file].buffer, ImVec2(-FLT_MIN, -FLT_MIN),
-                                      ImGuiInputTextFlags_AllowTabInput);
-            ImGui::PopStyleVar();
-            ImGui::EndChild();
-        }
+        render_text_editor();
         ImGui::End();
     }
 }
@@ -177,4 +144,14 @@ void addon_options()
         Settings::json_settings[Settings::WINDOW_ALPHA] = Settings::window_alpha;
         Settings::save(Settings::settings_path);
     }
+}
+
+void texture_callback(const char *identifier, Texture *texture)
+{
+    if (identifier == nullptr || texture == nullptr)
+        return;
+    // if (!strncmp(identifier, "IMAGE_", 6)) {
+    // }
+    api->Log(ELogLevel_INFO, addon_name, "texture loaded!");
+    textures[identifier] = texture;
 }

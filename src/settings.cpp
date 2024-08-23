@@ -11,6 +11,7 @@ namespace Settings
 {
 const char *IS_ADDON_ENABLED = "IsAddonEnabled";
 const char *NOTES_PATH = "NotesPath";
+const char *IMAGES_PATH = "ImagesPath";
 const char *WINDOW_ALPHA = "WindowAlpha";
 
 json json_settings;
@@ -19,6 +20,7 @@ std::filesystem::path settings_path;
 
 bool is_addon_enabled = true;
 std::filesystem::path notes_path;
+std::filesystem::path images_path;
 float window_alpha = 1.f;
 
 void load(const std::filesystem::path &path)
@@ -45,6 +47,9 @@ void load(const std::filesystem::path &path)
     }
     if (!json_settings[NOTES_PATH].is_null()) {
         json_settings[NOTES_PATH].get_to(notes_path);
+    }
+    if (!json_settings[IMAGES_PATH].is_null()) {
+        json_settings[IMAGES_PATH].get_to(images_path);
     }
     if (!json_settings[WINDOW_ALPHA].is_null()) {
         json_settings[WINDOW_ALPHA].get_to(window_alpha);

@@ -8,3 +8,5 @@ HWND game_handle = nullptr;
 std::vector<File> files;
 bool create_new_file = false;
 char new_file_name[256] = {};
+std::map<std::string, Texture *> textures;
+int open_file = 0;
