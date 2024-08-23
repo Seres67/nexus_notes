@@ -8,7 +8,7 @@ A Nexus addon to take notes in game.
 2. Download the latest release from the [Releases](https://github.com/Seres67/nexus_app_launcher/releases) page.
 3. Place the `nexus_notes.dll` file in the `<GW2>\addons` folder. 
 4. Launch the game.
-5. Enable the addon in Nexus.
+5. Load the addon in Nexus.
 
 ## Usage
 

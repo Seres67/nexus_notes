@@ -37,7 +37,7 @@ extern "C" __declspec(dllexport) AddonDefinition *GetAddonDef()
     addon_def.Version.Major = 0;
     addon_def.Version.Minor = 1;
     addon_def.Version.Build = 0;
-    addon_def.Version.Revision = 0;
+    addon_def.Version.Revision = 1;
     addon_def.Author = "Seres67";
     addon_def.Description = "A Nexus addon to take notes in game.";
     addon_def.Load = addon_load;
@@ -96,9 +96,6 @@ void addon_unload()
 {
     api->Log(ELogLevel_INFO, addon_name, "unloading addon...");
     for (auto &[name, path, buffer] : files) {
-        char log[256];
-        sprintf_s(log, "Closing file: %s", path.c_str());
-        api->Log(ELogLevel_DEBUG, addon_name, log);
         std::ofstream output_file(path);
         output_file << buffer;
         output_file.close();
@@ -114,7 +111,9 @@ bool tmp_open = true;
 static int open_file = 0;
 void addon_render()
 {
-    if (tmp_open && ImGui::Begin("Notes###NotesMainWindow", &tmp_open, ImGuiWindowFlags_NoCollapse)) {
+    ImGui::SetNextWindowBgAlpha(Settings::window_alpha);
+    auto flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDecoration;
+    if (tmp_open && ImGui::Begin("Notes###NotesMainWindow", &tmp_open, flags)) {
         if (ImGui::BeginChild("Filesystem##NotesFS", {150, -FLT_MIN}, true)) {
             if (ImGui::SmallButton("Create##NotesCreate")) {
                 create_new_file = true;
@@ -125,9 +124,6 @@ void addon_render()
                 ImGui::InputText("Filename##NotesNewFileInput", new_file_name, 256);
                 if (ImGui::SmallButton("Confirm##NotesConfirmCreate") || ImGui::IsKeyPressed(ImGuiKey_Enter, false)) {
                     std::string file_path = Settings::notes_path.string() + "\\" + (std::string(new_file_name));
-                    char log[256];
-                    sprintf_s(log, "Creating file: %s", file_path.c_str());
-                    api->Log(ELogLevel_DEBUG, addon_name, log);
                     std::ifstream input_file(file_path);
                     std::string buffer;
                     if (input_file.is_open()) {
@@ -156,10 +152,7 @@ void addon_render()
             ImGui::SameLine(0, 1 * ImGui::GetStyle().ItemSpacing.x);
             if (ImGui::SmallButton("Save") ||
                 (ImGui::GetIO().KeyMods == ImGuiKeyModFlags_Ctrl && ImGui::IsKeyPressed('S', false))) {
-                api->Log(ELogLevel_INFO, addon_name, "Save button pressed!");
-                char log[256];
-                sprintf_s(log, "Saved %s, content %s", files[open_file].name.c_str(), files[open_file].buffer.c_str());
-                api->Log(ELogLevel_DEBUG, addon_name, log);
+                api->Log(ELogLevel_INFO, addon_name, "Saving!");
                 std::ofstream output_file(files[open_file].path);
                 output_file << files[open_file].buffer;
                 output_file.close();
@@ -174,4 +167,14 @@ void addon_render()
     }
 }
 
-void addon_options() {}
+void addon_options()
+{
+    if (ImGui::Checkbox("Enabled##NotesEnabled", &Settings::is_addon_enabled)) {
+        Settings::json_settings[Settings::IS_ADDON_ENABLED] = Settings::is_addon_enabled;
+        Settings::save(Settings::settings_path);
+    }
+    if (ImGui::SliderFloat("Window Opacity", &Settings::window_alpha, 0.f, 1.f)) {
+        Settings::json_settings[Settings::WINDOW_ALPHA] = Settings::window_alpha;
+        Settings::save(Settings::settings_path);
+    }
+}

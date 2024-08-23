@@ -33,7 +33,7 @@ add_subdirectory(src/imgui)
 
 add_library(nexus_notes SHARED src/main.cpp src/globals.cpp src/gui.cpp src/settings.cpp)
 target_link_libraries(nexus_notes imgui)
-set_property(TARGET nexus_notes PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreadedDebug")
+set_property(TARGET nexus_notes PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 # copy dll to game directory
 add_custom_command(TARGET nexus_notes

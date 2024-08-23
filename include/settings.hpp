@@ -16,9 +16,11 @@ extern std::mutex mutex;
 
 extern bool is_addon_enabled;
 extern std::filesystem::path notes_path;
+extern float window_alpha;
 
 extern const char *IS_ADDON_ENABLED;
 extern const char *NOTES_PATH;
+extern const char *WINDOW_ALPHA;
 } // namespace Settings
 
 #endif // SETTINGS_HPP
