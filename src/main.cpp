@@ -12,6 +12,7 @@ void addon_unload();
 void addon_render();
 void addon_options();
 void texture_callback(const char *identifier, Texture *texture);
+void keybind_handler(const char *identifier, bool is_release);
 
 BOOL APIENTRY dll_main(const HMODULE hModule, const DWORD ul_reason_for_call, LPVOID lpReserved)
 {
@@ -37,7 +38,7 @@ extern "C" __declspec(dllexport) AddonDefinition *GetAddonDef()
     addon_def.Version.Major = 0;
     addon_def.Version.Minor = 1;
     addon_def.Version.Build = 0;
-    addon_def.Version.Revision = 2;
+    addon_def.Version.Revision = 4;
     addon_def.Author = "Seres67";
     addon_def.Description = "A Nexus addon to take notes in game.";
     addon_def.Load = addon_load;
@@ -103,6 +104,7 @@ void addon_load(AddonAPI *api_p)
         std::filesystem::create_directories(Settings::notes_path);
     }
     api->QuickAccess.Add("QA_NOTES", "ICON_NOTES", "ICON_NOTES_HOVER", "KB_NOTES_TOGGLE", "Notes");
+    api->InputBinds.RegisterWithString("KB_NOTES_TOGGLE", keybind_handler, "((null))");
     api->Log(ELogLevel_INFO, addon_name, "addon loaded!");
 }
 
@@ -121,9 +123,10 @@ void addon_unload()
     api = nullptr;
 }
 
-bool tmp_open = true;
+bool tmp_open = false;
 void addon_render()
 {
+    ImGui::SetNextWindowPos(ImVec2(400, 600), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowBgAlpha(Settings::window_alpha);
     auto flags = ImGuiWindowFlags_NoCollapse;
     if (tmp_open && ImGui::Begin("Notes###NotesMainWindow", &tmp_open, flags)) {
@@ -154,4 +157,11 @@ void texture_callback(const char *identifier, Texture *texture)
     // }
     api->Log(ELogLevel_INFO, addon_name, "texture loaded!");
     textures[identifier] = texture;
+}
+
+void keybind_handler(const char *identifier, bool is_release)
+{
+    if (!strcmp(identifier, "KB_NOTES_TOGGLE")) {
+        tmp_open = !tmp_open;
+    }
 }

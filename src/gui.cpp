@@ -77,7 +77,7 @@ void render_text_editor()
                     break;
                 }
                 char log[256];
-                sprintf_s(log, "offset: %d, pos: %d, pos2: %d", offset, pos, pos2);
+                sprintf_s(log, "offset: %d, pos: %zd, pos2: %zd", offset, pos, pos2);
                 api->Log(ELogLevel_INFO, addon_name, log);
                 auto identifier = files[open_file].buffer.substr(pos + 1, pos2 - pos - 1);
                 api->Log(ELogLevel_INFO, addon_name, identifier.c_str());
